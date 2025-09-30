@@ -34,3 +34,21 @@ class Speaker:
         with self._speak_lock:
             self.engine.say(text)
             self.engine.runAndWait()
+
+class Listener:
+    def __init__(self):
+        self.recognizer = sr.Recognizer()
+        self.recognizer.energy_threshold = 250
+        self.recognizer.dynamic_energy_threshold = True
+        
+    def listen_once(self, timeout = 5, phrase_time_limit=6)-> Optional[str]:
+        with sr.Microphone() as mic:
+            audio = self.recognizer.listen(mic, timeout=timeout, phrase_time_limit=phrase_time_limit)
+        try:
+            return self.recognizer.recognize_sphinx(audio)
+        except Exception:
+            try:
+                return self.recognizer.recognize_google(audio)
+            except Exception:
+                return None
+            
