@@ -55,8 +55,8 @@ class Assistant:
     def __init__(self):
         self.speaker = Speaker()
         self.listener = Listener()
-        self.intents = Dict[str, Callable[[IntentResult], str]] = {}
-        self.regsister_intents()
+        self.intents: Dict[str, Callable[[IntentResult], str]] = {}
+        self.register_intents()
         
     def register(self,name:str):
         def _wrap(fn: Callable[[IntentResult], str]):
@@ -69,7 +69,7 @@ class Assistant:
         def _(res: IntentResult) -> str:
             hour = _dt.datetime.now().hour
             part = "morning" if hour < 12 else "afternoon" if hour < 18 else "evening"
-            return f"Good {part}! How can you help?"
+            return f"Good {part}! How can I help?"
         
         @self.register("time")
         def _(res:IntentResult) -> str:
@@ -197,7 +197,7 @@ class VoiceAssistantApp(tk.Tk):
         if tag not in self.text.tag_names():
             self.text.tag_configure("user",foreground="#2b6cb0")
             self.text.tag_configure("bot",foreground="#2f855a")
-            self.text.tag_configure("user",foreground="#888888", font =("Consolas", 10, "italic"))
+            self.text.tag_configure("sys",foreground="#888888", font =("Consolas", 10, "italic"))
         self.text.insert("end", f"{who}: ",("sys",))    
         self.text.insert("end", f"{msg}\n ",(tag,))
         self.text.see("end")
@@ -222,7 +222,7 @@ class VoiceAssistantApp(tk.Tk):
             return
         self.entry.delete(0, tk.END)
         self.set_status("Thinking")
-        threading.Thread(target=self.handle_text_query,args=(text,), daemon=True).start()
+        threading.Thread(target=self._handle_text_query,args=(text,), daemon=True).start()
     def on_stop_speaking(self):
         messagebox.showinfo("Speaking","If im listening, please wait a moment. ill finish shortly.")
     def _listen_and_respond(self):
@@ -306,3 +306,10 @@ class VoiceAssistantApp(tk.Tk):
         except queue.Empty:
             pass
         self.after(100, self._process_queue)
+        
+def main():
+    app = VoiceAssistantApp()
+    app.mainloop()
+            
+if __name__ == "__main__":
+    main()
