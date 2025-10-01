@@ -181,3 +181,25 @@ class VoiceAssistantApp(tk.Tk):
         self.send_btn = ttk.Button(bottom, text="Send", command=self.on_send_click)
         self.send_btn.pack(side=tk.LEFT)
         
+    def set_status(self,text:str):
+        self.status_var.set(text)
+        color = {
+            "Idle": "#555",
+            "Listening": "#0a7",
+            "Thinking": "#a70",
+            "Speaking": "#a7a",
+            
+        }.get(text, "#555")
+        self.status_lbl.configure(foreground=color)
+    def append_transcript(self,who: str, msg:str):
+        self.text.configure(state="normal")
+        tag = "user" if who == "You" else "bot"
+        if tag not in self.text.tag_names():
+            self.text.tag_configure("user",foreground="#2b6cb0")
+            self.text.tag_configure("bot",foreground="#2f855a")
+            self.text.tag_configure("user",foreground="#888888", font =("Consolas", 10, "italic"))
+        self.text.insert("end", f"{who}: ",("sys",))    
+        self.text.insert("end", f"{msg}\n ",(tag,))
+        self.text.see("end")
+        self.text.configure(state="disabled")    
+        
