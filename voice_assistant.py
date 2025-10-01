@@ -285,4 +285,24 @@ class VoiceAssistantApp(tk.Tk):
                 self.assistant.speaker.say_blocking(text)
             finally:
                 self.ui_queue.put(("status", "Idle"))
-        threading.Thread(target=run, daemon=True).start() 
+        threading.Thread(target=run, daemon=True).start()
+        
+    def _process_queue(self):
+        try:
+            while True:
+                action, payload = self.ui_queue.get_nowait()
+                if action == "append":
+                    who,msg = payload
+                    self.append_transcript(who,msg)
+                elif action == "status":
+                    self.set_status(payload)
+                elif action == "listen_done":
+                    pass
+                elif action== "unlock_btn":
+                    self.push_btn.configure(state="normal")
+                    self.listening = False
+                elif action == "exit":
+                    self.after(150, self.destroy)
+        except queue.Empty:
+            pass
+        self.after(100, self._process_queue)
