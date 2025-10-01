@@ -129,4 +129,55 @@ class Assistant:
         if any(k in t for k in ["quit", "exit", "goodbye"]):
             return IntentResult("quit", text)
         return IntentResult("fallback", text)
-            
+
+class VoiceAssistantApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Voice Assistant")
+        self.geometry("720x520")
+        self.minsize(520,420)
+        
+        try:
+            self.style = ttk.Style(self)
+            if "clam" in self.style.theme_names():
+                self.style.theme_use("clam")
+        except Exception:
+            pass
+        
+        self.assistant = Assistant()
+        self.ui_queue: "queue.Queue[tuple[str,str]]" = queue.Queue()
+        self._build_widgets()
+        self.after(100, self._process_queue)
+        self.listening = False
+        self.speaking = False
+        
+    def _build_widgets(self):
+        top = ttk.Frame(self)
+        top.pack(side=tk.TOP, fill=tk.X, padx = 12, pady=(12,6))
+        self.title_lbl = ttk.Label(top,text="Assistant",font=("Segoe UI", 16, "bold"))
+        self.title_lbl.pack(side=tk.LEFT)
+        self.status_var = tk.StringVar(value="Idle")
+        self.status_lbl = ttk.Label(top,textvariable=self.status_var, foreground="#555")
+        self.status_lbl.pack(side=tk.RIGHT)
+        mid = ttk.Frame(self)
+        mid.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=6)
+        
+        self.text = tk.Text(mid, wrap="word", state="disabled", height=16)
+        self.text.configure(font=("Consolas",11))
+        self.scroll = ttk.Scrollbar(mid,command= self.text.yview)
+        self.text.configure(yscrollcommand=self.scroll.set)
+        self.text.pack(side=tk.LEFT, fill=tk.BOTH,expand=True)
+        self.scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        bottom = ttk.Frame(self)
+        bottom.pack(side=tk.BOTTOM, fill=tk.X, padx=12,pady=12)
+        self.push_btn = ttk.Button(bottom, text="Push to Talk", command=self.on_push_to_talk)
+        self.push_btn.pack(side=tk.LEFT)
+        self.stop_btn = ttk.Button(bottom, text="Stop Speaking", command=self.on_stop_speaking)
+        self.stop_btn.pack(side=tk.LEFT, padx=(8,0))
+        
+        self.entry = ttk.Entry(bottom)
+        self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(12,8))
+        self.entry.bind("<Return>", self.on_text_submit)
+        self.send_btn = ttk.Button(bottom, text="Send", command=self.on_send_click)
+        self.send_btn.pack(side=tk.LEFT)
+        
