@@ -42,10 +42,30 @@ class Listener:
         self.recognizer.dynamic_energy_threshold = True
         
     def listen_once(self, timeout = 5, phrase_time_limit=6)-> Optional[str]:
-        with sr.Microphone() as mic:
-            audio = self.recognizer.listen(mic, timeout=timeout, phrase_time_limit=phrase_time_limit)
+        mic_name = "Microphone (Realtek High Definition Audio)"
+        mic_index = None
+
+        for i, name in enumerate(sr.Microphone.list_microphone_names()):
+            if mic_name.lower() in name.lower():
+                mic_index = i
+                break
+
+        if mic_index is None:
+            print("Could not find the specified mic, using default...")
+            mic = sr.Microphone()
+        else:
+            mic = sr.Microphone(device_index=mic_index)
+
+        with mic as source:
+            print("Adjusting to ambient noise...")
+            self.recognizer.adjust_for_ambient_noise(source, duration=1)
+            audio = self.recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_time_limit)
+
+            # audio = self.recognizer.listen(mic, timeout=timeout, phrase_time_limit=phrase_time_limit)
+            print("Audio captured, processing speech...")
+            
         try:
-            return self.recognizer.recognize_sphinx(audio)
+            return self.recognizer.recognize_google(audio)
         except Exception:
             try:
                 return self.recognizer.recognize_google(audio)
