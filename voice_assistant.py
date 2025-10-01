@@ -201,5 +201,88 @@ class VoiceAssistantApp(tk.Tk):
         self.text.insert("end", f"{who}: ",("sys",))    
         self.text.insert("end", f"{msg}\n ",(tag,))
         self.text.see("end")
-        self.text.configure(state="disabled")    
+        self.text.configure(state="disabled") 
+    
+    def on_push_to_talk(self):
+        if self.listening:
+            return
+        self.listening = True
+        self.set_status("Listening")
+        self.append_transcript("System", "Listening...")
+        self.push_btn.configure(state="disabled")
+        thread = threading.Thread(target=self._listen_and_respond, daemon=True)   
+        thread.start()
         
+    def on_text_submit(self,event=None):
+        self.on_send_click()
+        
+    def on_send_click(self):
+        text = self.entry.get().strip()
+        if not text:
+            return
+        self.entry.delete(0, tk.END)
+        self.set_status("Thinking")
+        threading.Thread(target=self.handle_text_query,args=(text,), daemon=True).start()
+    def on_stop_speaking(self):
+        messagebox.showinfo("Speaking","If im listening, please wait a moment. ill finish shortly.")
+    def _listen_and_respond(self):
+        try:
+            listener = self.assistant.listener
+            try:
+                text = listener.listen_once()
+            except sr.WaitTimeoutError:
+                text = None
+            except Exception:
+                text = None
+
+            self.ui_queue.put(("listen_done", text or ""))
+
+            if not text:
+                self.ui_queue.put(("append", ("System", "Sorry, I didn't catch that.")))
+                self.ui_queue.put(("status", "Idle"))
+                return
+
+            self.ui_queue.put(("append", ("You", text)))
+            self.ui_queue.put(("status", "Thinking"))
+
+            res = self.assistant.detect_intent(text)
+            handler = self.assistant.intents.get(res.intent, self.assistant.intents["fallback"])
+            reply = handler(res)
+
+            if res.intent == "quit":
+                self.ui_queue.put(("append", ("Assistant", reply)))
+                self._speak_async(reply)
+                time.sleep(0.1)
+                self.ui_queue.put(("exit", ""))
+                return
+
+            self.ui_queue.put(("append", ("Assistant", reply)))
+            self._speak_async(reply)
+        finally:
+            self.ui_queue.put(("status", "Idle"))
+            self.ui_queue.put(("unlock_btn", ""))
+
+    def _handle_text_query(self, text: str):
+        res = self.assistant.detect_intent(text)
+        handler = self.assistant.intents.get(res.intent, self.assistant.intents["fallback"])
+        reply = handler(res)
+
+        if res.intent == "quit":
+            self.ui_queue.put(("append", ("Assistant", reply)))
+            self._speak_async(reply)
+            time.sleep(0.1)
+            self.ui_queue.put(("exit", ""))
+            return
+
+        self.ui_queue.put(("append", ("Assistant", reply)))
+        self._speak_async(reply)
+        self.ui_queue.put(("status", "Idle"))
+
+    def _speak_async(self, text: str):
+        def run():
+            self.ui_queue.put(("status", "Speaking"))
+            try:
+                self.assistant.speaker.say_blocking(text)
+            finally:
+                self.ui_queue.put(("status", "Idle"))
+        threading.Thread(target=run, daemon=True).start() 
